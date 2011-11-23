@@ -2,13 +2,17 @@
 /*
 Plugin Name: OS Post Files
 Description: Automatically lists all the attached files for a particular post in a user-friendly manner.
-Version: 0.1
+Version: 0.2
 Author: Oli Salisbury
 */
 
 //Config
-$pages_in = array(22);
-$posts_in = array(0);
+$os_postfiles_post_types_in = array(
+	'post' => array(), 
+	'page' => array(),
+	'event' => array(), 
+	'casestudy' => array()
+);
 
 /*
 DO NOT EDIT BELOW HERE
@@ -20,25 +24,6 @@ if (WP_ADMIN) {
 	add_action('admin_head', 'os_postfiles_css');
 	add_action('admin_head', 'os_postfiles_init_js');
 	add_action('admin_footer', 'os_postfiles_init_footer');
-}
-
-//function to add to posts
-function addtoindvpost($thispostid, $array) {
-	if (sizeof($array)<0) { $array = array(); }
-	$ins = false;
-	foreach ($array as $id) {
-		if	($id > 0) { $ins = true; break; } 
-	}
-	//returns
-	if ($ins && in_array($thispostid, $array)) { //if there are ins defined and this post is in ins
-		return true;
-	} else if (in_array("-$thispostid", $array) || in_array(0, $array)) { //if this post is suppressed or all posts are suppressed then hide
-		return false;
-	} else if (!$ins) { //if ins arent defined show all
-		return true;
-	} else {
-		return false;
-	}
 }
 
 //function to get all file attachments for a post
@@ -84,18 +69,22 @@ function os_postfiles_add() {
 	echo '</div>';
 }
 
-//Creates meta box on all Posts and Pages
+//Creates meta box on all defined post types
 function os_postfiles_metabox() {
-	global $_GET, $pages_in, $posts_in;
-	//for custom post types
-	add_meta_box('os_postfiles_list', 'Attachments', 'os_postfiles_add', '');
-	//pages
-	if (addtoindvpost($_GET['post'], $pages_in)) {
-		add_meta_box('os_postfiles_list', 'Attachments', 'os_postfiles_add', 'page');
-	}
-	//posts
-	if (addtoindvpost($_GET['post'], $posts_in)) {
-		add_meta_box('os_postfiles_list', 'Attachments', 'os_postfiles_add', 'post');
+	global $_GET, $os_postfiles_post_types_in;
+	//for each post type
+	foreach ($os_postfiles_post_types_in as $posttype => $inouts) {
+		//get lowest inout val first
+		sort($inouts);
+		//if lowest val of inout is above zero (include)
+		if ($inouts[0]>0 && $inouts) {
+			if (!in_array($_GET['post'], $inouts)) { continue; }
+		//if inout is negative (disclude), or inout not set at all
+		} else {
+			if (in_array($_GET['post']*-1, $inouts)) { continue; }
+		}
+		//add meta box
+		add_meta_box('os_postfiles_list', 'Attachments', 'os_postfiles_add', $posttype);
 	}
 }
 
